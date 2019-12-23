@@ -1,7 +1,7 @@
 # LanTalkServer
 
 ## Description
-Highly customisable python3 scripts (server &amp; client) for real-time, encrypted messaging on a Local Area Network (and outside of it) using HTTP.
+Configurable python3 scripts (server &amp; client) for real-time, encrypted messaging on a Local Area Network (and outside of it) using HTTP.
 
 ## Getting Started
 - (1) Place all of the server files in one folder
