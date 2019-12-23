@@ -39,4 +39,3 @@ Configurable python3 scripts (server &amp; client) for real-time, encrypted mess
 - [ ] (3) Thoroughly test the software
 - [ ] (4) Complete wiki
 
-Complete: 0/25
