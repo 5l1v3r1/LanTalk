@@ -73,18 +73,6 @@ def haserror(command):
     except: return True
 
 
-# Config setting validator functions
-def validator_isservername(value):
-    if len(value) <= 40: return True
-    else: return fa;se
-def validator_isyesno(value):
-    """Checks if the value is either yes or no"""
-    if value.lower() in ["yes","no"]: return True
-    else: return False
-
-def validator_ishexcolor(value)
-
-
 # Config functions
 def conf_parse(conf_string):
     """Parses a config string in the form: `setting = value`, one setting per line, lines starting with # are ignored."""
@@ -105,4 +93,5 @@ def conf_validate(conf_dict):
     for setting in conf_dict.keys():
         # If the setting isn't on the pre-defined list, it's invalid so throw an error
         if setting not in VALID_CONF_OPTIONS.keys(): raise InvalidConfigException("File: `{}`. Invalid setting: `{}`.".format(CONF_LOCATION,setting))
-        # 
+        # Run the testing function for the setting
+        VALID_CONF_OPTIONS[setting]()
