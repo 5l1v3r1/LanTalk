@@ -13,7 +13,7 @@ Configurable python3 scripts (server &amp; client) for real-time, encrypted mess
 
 ## Project Roadmap
 - [ ] (1) Complete first working version of the server:
-  - [ ] (1.1) Read and parse configuration
+  - [x] (1.1) Read and parse configuration
   - [ ] (1.2) Start server and listen for connections
   - [ ] (1.3) Optionally broacast the server on LAN
   - [ ] (1.4) Authenticate users + implement a messaging protocol
