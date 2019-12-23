@@ -13,7 +13,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # Constants
 SOFTWARE_VERSION = (1,0,0) # Server version
 LTS_HOME_DIR = "." # Where to look for all the files
-LOG_LEVEL = 1 # (0)DEBUG, (1)INFO, (2)WARNING, (3)ERROR
+LOG_LEVEL = 0 # (0)DEBUG, (1)INFO, (2)WARNING, (3)ERROR
 CONF_LOCATION = "lanTalkSrv.conf" # Name of the config file
 VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them
     "ServerName": lambda val: True if len(val) <= 40 else False, # Length under 40 (for client UI) check
@@ -64,6 +64,7 @@ def log(level, message):
 # Config functions
 def conf_parse(conf_string):
     """Parses a config string in the form: `setting = value`, one setting per line, lines starting with # are ignored."""
+    log(0,"Using conf_parse function to parse the config string")
     config = {} # Define empty config
     lines = conf_string.split("\n") # Separate lines of the config
     current_line = 0 # Line counter for error messages
@@ -78,32 +79,77 @@ def conf_parse(conf_string):
 
 def conf_validate(conf_dict):
     """Validates the config for the server making sure every option is valid."""
+    log(0,"Using conf_validate function to validate the config dict")
     for setting in conf_dict.keys():
         # If the setting isn't on the pre-defined list, it's invalid so throw an error
         if setting not in VALID_CONF_OPTIONS.keys(): raise InvalidConfigException("File: `{}`. Invalid setting: `{}`.".format(CONF_LOCATION, setting))
         # Run the testing function for the setting
         if not VALID_CONF_OPTIONS[setting](conf_dict[setting]):
             raise InvalidConfigException("Invalid value `{}` for setting `{}` in config file `{}`!".format(conf_dict[setting], setting, CONF_LOCATION))
+        return conf_dict # Despite being unchanged, return the dict for one-liners
 
 def conf_add_missing(conf_dict):
     """Adds missing settings to the config and gives them default values."""
+    log(0,"Using conf_add_missing function to add any missing settings to the config")
     for setting in DEFAULT_CONF_OPTIONS.keys():
         # If the setting isn't in the user config
         if not setting in conf_dict.keys():
             # Add it with the pre-defined default value
             conf_dict[setting] = DEFAULT_CONF_OPTIONS[setting]
-    return conf_dict
+            log(0,"Added setting `{} = {}` (default option)".format(setting, conf_dict[setting]))
+    return conf_dict # Return the conf dict with the added configuration
+
+
+# Server class
+class LanTalkServer(BaseHTTPRequestHandler):
+    """Class which handles the clients"""
+    
+    # Define some variables
+    server_version = "LanTalkServer/{}".format(SOFTWARE_VERSION) # The "Server" header
+    sys_version = "" # Remove Python version
+    protocol_version = "HTTP/1.1" # To support persistent connections
+
+    def log_message(self, form, *args):
+        log(0,"Request from {}".format(self.client_address[0]))
+
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'Hello, world!')
 
 
 # Main body
 def main():
     """The main body of the LanTalk server script."""
 
-    log(1,"Started LanTalk Server Software")
+    # Beginning
+    log(1,"Started LanTalk Server")
+    time.sleep(0.5) # Wait a bit just cause
 
-    # Config reader
-    with open(CONF_LOCATION,"r") as conf:
-        conf_validate(conf_parse(conf.read()))
+    # Config reader section
+    log(0,"Reading and parsing config")
+    with open(CONF_LOCATION,"r") as conf_file: # Read the config file
+        conf_string = conf_file.read()
+    conf = conf_add_missing(conf_validate(conf_parse(conf_string))) # Put the config string through the config functions. The end result should be a valid config dict
+    log(0,"Config read and parsed successfully")
+
+    # Broadcast receiver thread section
+    def bcast_recv_thread():
+        pass
+    #
+
+    # Broadcast sender thread section
+    def bcast_send_thread():
+        pass
+    #
+
+    # Starting HTTP server section
+    log(1,"Starting HTTP server on {}:{}".format(conf["BindAddr"] if not conf["BindAddr"] == "" else "*", conf["BindPort"]))
+    server = HTTPServer((conf["BindAddr"], int(conf["BindPort"])), LanTalkServer)
+    try: server.serve_forever()
+    except KeyboardInterrupt: pass
+    
+
 
 # Start the server if ran as standalone
 if __name__ == "__main__": main()
