@@ -18,7 +18,7 @@ VALID_CONF_OPTIONS = {
     "BindPort": [], # Port to bind to
     "ConstantServerBcast": [], # Whether the server should constantly broadcast its LAN presence
     "ConstantServerBcastInterval": [], # How long to wait between broadcasts
-    "BcastServerOnLan": [], # Whether to broadcast the server at all. Overrides ConstantServerBcast
+    "AnswerBcastRequests": [], # Whether to answer requests for a broadcast
     "RequireAuth": [], # Whether to allow login without authentication
     "AuthFile": [], # File which stores user credentials. Will be created if does not exist. Ignored if auth not required
 }
@@ -30,9 +30,9 @@ DEFAULT_CONF_OPTIONS = {
     "BindPort": "8866",
     "ConstantServerBcast": "no",
     "ConstantServerBcastInterval": "5",
-    "BcastServerOnLan": "yes",
+    "AnswerBcastRequests": "yes",
     "RequireAuth": "yes",
-    "AuthFile": "lanTalkSrv",
+    "AuthFile": "lanTalkSrv-user.dat",
 }
 
 # Define error classes
