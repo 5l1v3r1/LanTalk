@@ -3,28 +3,51 @@
 # Import dependencies
 import socket
 import json
+import re
+import ipaddress
+import os
 import threading
-import http.server
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Define constants
-SOFTWARE_VERSION = (1,0,0)
-LTS_HOME_DIR = "."
-CONF_LOCATION = "lanTalkSrv.conf"
-VALID_CONF_OPTIONS = {
-    "ServerName": [], # How the server identifies itself
-    "ServerColorScheme": [], # Theme the clients will see after connecting. Hex color code
-    "MaxClients": [], # How many clients will the server accept at most at any given time
-    "BindAddr": [], # Address to bind to
-    "BindPort": [], # Port to bind to
-    "ConstantServerBcast": [], # Whether the server should constantly broadcast its LAN presence
-    "ConstantServerBcastInterval": [], # How long to wait between broadcasts
-    "AnswerBcastRequests": [], # Whether to answer requests for a broadcast
-    "RequireAuth": [], # Whether to allow login without authentication
-    "AuthFile": [], # File which stores user credentials. Will be created if does not exist. Ignored if auth not required
+# Constants
+SOFTWARE_VERSION = (1,0,0) # Server version
+LTS_HOME_DIR = "." # Where to look for all the files
+CONF_LOCATION = "lanTalkSrv.conf" # Name of the config file
+VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them
+    "ServerName": [
+        lambda val: True if len(val) <= 40 else False # Length under 40 (for client UI) check
+    ],
+    "ServerColorScheme": [
+        lambda val: True if re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", val) else False # Regex check if it's a valid hex color code
+    ],
+    "MaxClients": [
+        lambda val: True if val.replace("-","",1).isnumeric() and int(val) >= -1 else False # Numeric and -1 or higher
+    ],
+    "BindAddr": [
+        lambda val: True if not haserror(ipaddress.ip_address(val)) else False # Check if valid IP address
+    ],
+    "BindPort": [
+        lambda val: True if val.isnumeric() and int(val) >= 1 and int(val) <= 65535 else False # Check if valid port
+    ],
+    "ConstantServerBcast": [
+        lambda val: True if val.lower() in ["yes", "no"] else False # Check if is "yes" or "no" and ignore caps
+    ],
+    "ConstantServerBcastInterval": [
+        lambda val: True if val.isnumeric() and int(val) < 0 else False # Is an integer and non-zero
+    ],
+    "AnswerBcastRequests": [
+        lambda val: True if val.lower() in ["yes", "no"] else False # Check if is "yes" or "no" and ignore caps
+    ],
+    "RequireAuth": [
+        lambda val: True if val.lower() in ["yes", "no"] else False # Check if is "yes" or "no" and ignore caps
+    ],
+    "AuthFile": [
+        lambda val: True if os.path.isfile(val) # If the file exists
+    ],
 }
 DEFAULT_CONF_OPTIONS = {
     "ServerName": "A lanTalk Server",
-    "ServerColorScheme": "333333",
+    "ServerColorScheme": "#333333",
     "MaxClients": "-1",
     "BindAddr": "",
     "BindPort": "8866",
@@ -32,13 +55,37 @@ DEFAULT_CONF_OPTIONS = {
     "ConstantServerBcastInterval": "5",
     "AnswerBcastRequests": "yes",
     "RequireAuth": "yes",
-    "AuthFile": "lanTalkSrv-user.dat",
+    "AuthFile": "lanTalkSrv-auth.dat",
 }
 
-# Define error classes
+
+# Error classes
 class InvalidConfigException(Exception): pass
 
-# Define functions
+
+# Helper functions
+def haserror(command):
+    """Checks whether running the arument causes an error. Warning: runs whatever is passed to it."""
+    try:
+        if type(command) == str: exec(command)
+        else: command()
+        return True
+    except: return True
+
+
+# Config setting validator functions
+def validator_isservername(value):
+    if len(value) <= 40: return True
+    else: return fa;se
+def validator_isyesno(value):
+    """Checks if the value is either yes or no"""
+    if value.lower() in ["yes","no"]: return True
+    else: return False
+
+def validator_ishexcolor(value)
+
+
+# Config functions
 def conf_parse(conf_string):
     """Parses a config string in the form: `setting = value`, one setting per line, lines starting with # are ignored."""
     config = {} # Define empty config
