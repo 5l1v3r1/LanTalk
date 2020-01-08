@@ -67,20 +67,19 @@ def haserror(command):
 	try:
 	    if type(command) == str: exec(command)
 	    else: command()
-	    return True
+	    return False
 	except: return True
 
 def log(level, message):
 	"""Logs messages to the console if they have the required log level."""
-	if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore
-	if level >= LOG_LEVEL: # If the LOG_LEVEL is lower than the message's, print the message
+	if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore (for example, after an update)
+	if level >= int(CONF["LogLevel"]): # If the LogLevel is lower than the message's, print the message
 	    print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
 
 
 # Config functions
 def conf_parse(conf_string):
 	"""Parses a config string in the form: `setting = value`, one setting per line, lines starting with # are ignored."""
-	log(0, "Using conf_parse to parse the config string")
 	config = {} # Define empty config
 	lines = conf_string.split("\n") # Separate lines of the config
 	current_line = 0 # Line counter for error messages
@@ -95,7 +94,6 @@ def conf_parse(conf_string):
 
 def conf_validate(conf_dict):
 	"""Validates the config for the server making sure every option is valid."""
-	log(0, "Using conf_validate to validate the config dict")
 	for setting in conf_dict.keys():
 	    # If the setting isn't on the pre-defined list, it's invalid so throw an error
 	    if setting not in VALID_CONF_OPTIONS.keys(): raise InvalidConfigException("File: `{}`. Invalid setting: `{}`.".format(CONF_LOCATION, setting))
@@ -106,7 +104,6 @@ def conf_validate(conf_dict):
 
 def conf_add_missing(conf_dict):
 	"""Adds missing settings to the config and gives them default values."""
-	log(0, "Using conf_add_missing to add any missing settings to the config")
 	for setting in DEFAULT_CONF_OPTIONS.keys():
 	    # If the setting isn't in the user config
 	    if not setting in conf_dict.keys():
@@ -134,12 +131,12 @@ class LanTalkServer(BaseHTTPRequestHandler):
 	    log(0, "{} request from {} for path {}".format(self.command ,self.client_address[0], self.path))
 
 	def do_GET(self):
-	    self.respond("Hello") # Temporary
+	    self.respond(self.generate_session_id("test")) # Temporary
 
 	# Client management functions
-	def generate_session_id(username):
+	def generate_session_id(self, username):
 		# Session IDs will consist of the username and a random ID
-		session_id = "{}.{}".format(username, [x for x in range()])
+		return "{}.{}".format(username, "".join([str(random.randint(1,9)) for x in range(ID_SUFFIX_LENGTH)]))
 
 	def respond(self, message):
 	    """Send a response to the client with the message"""
@@ -156,37 +153,43 @@ class LanTalkServer(BaseHTTPRequestHandler):
 
 # Main body
 def main():
-	"""The main body of the LanTalk server script."""
+	try: # Exit cleanly no matter what
+		"""The main body of the LanTalk server script."""
 
-	# Beginning
-	log(1, "LanTalk Server Starting")
-	time.sleep(0.5) # Wait a bit just cause
+		# Beginning
+		log(1, "LanTalk Server Starting")
+		time.sleep(1) # Wait a bit (it looks better :P)
 
+		# Broadcast receiver thread section
+		def bcast_recv_thread():
+		    log(0, "Started listening for client broadcasts")
+
+		# Broadcast sender thread section
+		def bcast_send_thread():
+		    log(0, "Started sending server broadcasts")
+
+		# HTTP server section
+		log(1, "Started listening on [{}:{}]".format(CONF["BindAddr"] if not CONF["BindAddr"] == "" else "*", CONF["BindPort"]))
+		server = HTTPServer((CONF["BindAddr"], int(CONF["BindPort"])), LanTalkServer)
+		try: server.serve_forever()
+		except KeyboardInterrupt: pass
+		log(1, "Stopped listening for connections")
+		log(1, "LanTalk Server Stopped")
+		# Clean exit
+		sys.exit(0)
+	except Exception as err: # On any uncaught error
+		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
+		sys.exit(1)
+
+
+# Read the config and start the server if ran as standalone
+if __name__ == "__main__":
 	# Config reader section
-	log(0, "Reading and parsing config")
-	with open(os.path.join(LTS_HOME_DIR, CONF_LOCATION),"r") as conf_file: # Read the config file
-	    conf_string = conf_file.read()
-	conf = conf_add_missing(conf_validate(conf_parse(conf_string))) # Put the config string through the config functions. The end result should be a valid config dict
+	# Read the config file
+	with open(os.path.join(LTS_HOME_DIR, CONF_LOCATION),"r") as conf_file:
+		conf_string = conf_file.read()
+	# Put the config string through the config functions. The end result should be a valid config dict
+	CONF = conf_add_missing(conf_validate(conf_parse(conf_string)))
 	log(0, "Config read and parsed successfully")
-
-	# Broadcast receiver thread section
-	def bcast_recv_thread():
-	    log(0, "Started listening for client broadcasts")
-
-	# Broadcast sender thread section
-	def bcast_send_thread():
-	    log(0, "Started sending server broadcasts")
-
-	# HTTP server section
-	log(1, "Started listening on [{}:{}]".format(conf["BindAddr"] if not conf["BindAddr"] == "" else "*", conf["BindPort"]))
-	server = HTTPServer((conf["BindAddr"], int(conf["BindPort"])), LanTalkServer)
-	try: server.serve_forever()
-	except KeyboardInterrupt: pass
-	log(1, "Stopped listening for connections")
-	log(1, "LanTalk Server Stopped")
-	# Clean exit
-	sys.exit(0)
-
-
-# Start the server if ran as standalone
-if __name__ == "__main__": main()
+	# Run the main part of the script
+	main()
