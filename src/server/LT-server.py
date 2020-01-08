@@ -18,14 +18,17 @@ import ipaddress
 import os
 import time
 import threading
+import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Constants
+# Constants (Settings which should generally be left untouched)
 SOFTWARE_VERSION = (1,0,0) # Server version
 LTS_HOME_DIR = "." # Where to look for all the files
-LOG_LEVEL = 1 # (0)DEBUG, (1)INFO, (2)WARNING, (3)ERROR
+LOG_LEVEL_NAMES = ["DBUG", "INFO", "WARN", "ERRO"]
 CONF_LOCATION = "lanTalkSrv.conf" # Name of the config file
-VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them
+ID_SUFFIX_LENGTH = 10 # Length of the suffix
+VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. Each function takes one argument, the value
+	"LogLevel": lambda val: True if not haserror("int({})".format(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False,
 	"ServerName": lambda val: True if len(val) <= 40 else False, # Length under 40 (for client UI) check
 	"ServerColorScheme": lambda val: True if re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", val) else False, # Regex check if it's a valid hex color code
 	"MaxClients": lambda val: True if val.replace("-","",1).isnumeric() and int(val) >= -1 else False, # Numeric and -1 or higher
@@ -35,10 +38,11 @@ VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them
 	"ConstantServerBcastInterval": lambda val: True if val.isnumeric() and int(val) > 0 else False, # Is an integer and non-zero
 	"AnswerBcastRequests": lambda val: True if val.lower() in ["yes", "no"] else False, # Check if is "yes" or "no" and ignore caps
 	"RequireAuth": lambda val: True if val.lower() in ["yes", "no"] else False, # Check if is "yes" or "no" and ignore caps
-	"AuthFile": lambda val: True if os.path.isfile(val) else False, # If the file exists
-	"SslCertFile": lambda val: True if os.path.isfile(val) else False, # If the file exists
+	"AuthFile": lambda val: True if os.path.isfile(os.path.join(LTS_HOME_DIR, val)) else False, # If the file exists
+	"SslCertFile": lambda val: True if os.path.isfile(os.path.join(LTS_HOME_DIR, val)) else False, # If the file exists
 }
 DEFAULT_CONF_OPTIONS = {
+	"LogLevel": "1",
 	"ServerName": "A lanTalk Server",
 	"ServerColorScheme": "#333333",
 	"MaxClients": "-1",
@@ -68,7 +72,6 @@ def haserror(command):
 
 def log(level, message):
 	"""Logs messages to the console if they have the required log level."""
-	LOG_LEVEL_NAMES = ["DBUG", "INFO", "WARN", "ERRO"] # Define names of log levels
 	if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore
 	if level >= LOG_LEVEL: # If the LOG_LEVEL is lower than the message's, print the message
 	    print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
@@ -117,27 +120,37 @@ def conf_add_missing(conf_dict):
 class LanTalkServer(BaseHTTPRequestHandler):
 	"""The main server class which handles client connections and management"""
 
-	# Define some variables
+	# Modify BaseHTTPRequestHandler behavior
 	server_version = "LanTalkServer/{}".format(SOFTWARE_VERSION) # The "Server" header
 	sys_version = "" # Remove Python version
-	protocol_version = "HTTP/1.1" # To support persistent connections
+	protocol_version = "HTTP/1.1" # To support persistent connections for speed
 
-	def log_message(self, form, *args):
-	    log(0, "Request from {} for path {}".format(self.client_address[0], self.path))
+	# Define some variables
+	signed_in_clients = {} # Dict of all clients with session IDs as keys
+	messages_to_send = [] # List of messages that are yet to be sent
+
+	# Server functions
+	def log_message(self, form, *args): # Suppress default logging and only log if right log level set
+	    log(0, "{} request from {} for path {}".format(self.command ,self.client_address[0], self.path))
 
 	def do_GET(self):
-	    self.respond("Hello")
+	    self.respond("Hello") # Temporary
+
+	# Client management functions
+	def generate_session_id(username):
+		# Session IDs will consist of the username and a random ID
+		session_id = "{}.{}".format(username, [x for x in range()])
 
 	def respond(self, message):
 	    """Send a response to the client with the message"""
-	    
+
 	    # Add headers
 	    self.send_response(200, "LanTalk Accepted Request")
-	    self.send_header("Content-Length", len(message))
+	    self.send_header("Content-Length", len(message)) # Needed for persistent connections
 	    self.end_headers()
 
 	    # Send the message
-	    message = message.encode("utf-8") # TODO: crypt
+	    message = message.encode("utf-8")
 	    self.wfile.write(message)
 
 
@@ -151,7 +164,7 @@ def main():
 
 	# Config reader section
 	log(0, "Reading and parsing config")
-	with open(CONF_LOCATION,"r") as conf_file: # Read the config file
+	with open(os.path.join(LTS_HOME_DIR, CONF_LOCATION),"r") as conf_file: # Read the config file
 	    conf_string = conf_file.read()
 	conf = conf_add_missing(conf_validate(conf_parse(conf_string))) # Put the config string through the config functions. The end result should be a valid config dict
 	log(0, "Config read and parsed successfully")
@@ -159,20 +172,20 @@ def main():
 	# Broadcast receiver thread section
 	def bcast_recv_thread():
 	    log(0, "Started listening for client broadcasts")
-	#
 
 	# Broadcast sender thread section
 	def bcast_send_thread():
 	    log(0, "Started sending server broadcasts")
-	#
 
 	# HTTP server section
-	log(1, "Started listening on {}:{}".format(conf["BindAddr"] if not conf["BindAddr"] == "" else "*", conf["BindPort"]))
+	log(1, "Started listening on [{}:{}]".format(conf["BindAddr"] if not conf["BindAddr"] == "" else "*", conf["BindPort"]))
 	server = HTTPServer((conf["BindAddr"], int(conf["BindPort"])), LanTalkServer)
 	try: server.serve_forever()
 	except KeyboardInterrupt: pass
 	log(1, "Stopped listening for connections")
 	log(1, "LanTalk Server Stopped")
+	# Clean exit
+	sys.exit(0)
 
 
 # Start the server if ran as standalone
