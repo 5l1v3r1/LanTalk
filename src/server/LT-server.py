@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+
+
 # =============================================== #
 # LanTalk Server
 # License: GPL-3.0
@@ -9,6 +11,8 @@
 # messaging on a Local Area Network
 # (and outside of it) using HTTP.
 # =============================================== #
+
+
 
 # Import dependencies
 import socket
@@ -21,12 +25,15 @@ import threading
 import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+
+
 # Constants (Settings which should generally be left untouched)
 SOFTWARE_VERSION = (1,0,0) # Server version
 LTS_HOME_DIR = "." # Where to look for all the files
 LOG_LEVEL_NAMES = ["DBUG", "INFO", "WARN", "ERRO"]
 CONF_LOCATION = "lanTalkSrv.conf" # Name of the config file
 ID_SUFFIX_LENGTH = 10 # Length of the suffix
+
 VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. Each function takes one argument, the value
 	"LogLevel": lambda val: True if not haserror("int({})".format(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False,
 	"ServerName": lambda val: True if len(val) <= 40 else False, # Length under 40 (for client UI) check
@@ -41,6 +48,7 @@ VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. 
 	"AuthFile": lambda val: True if os.path.isfile(os.path.join(LTS_HOME_DIR, val)) else False, # If the file exists
 	"SslCertFile": lambda val: True if os.path.isfile(os.path.join(LTS_HOME_DIR, val)) else False, # If the file exists
 }
+
 DEFAULT_CONF_OPTIONS = {
 	"LogLevel": "1",
 	"ServerName": "A lanTalk Server",
@@ -57,9 +65,13 @@ DEFAULT_CONF_OPTIONS = {
 }
 
 
+
 # Error classes
 class InvalidConfigException(Exception): pass
 
+
+
+# Function definitions
 
 # Helper functions
 def haserror(command):
@@ -113,9 +125,11 @@ def conf_add_missing(conf_dict):
 	return conf_dict # Return the conf dict with the added configuration
 
 
+
 # Server class
 class LanTalkServer(BaseHTTPRequestHandler):
 	"""The main server class which handles client connections and management"""
+
 
 	# Modify BaseHTTPRequestHandler behavior
 	server_version = "LanTalkServer/{}".format(SOFTWARE_VERSION) # The "Server" header
@@ -126,12 +140,14 @@ class LanTalkServer(BaseHTTPRequestHandler):
 	signed_in_clients = {} # Dict of all clients with session IDs as keys
 	messages_to_send = [] # List of messages that are yet to be sent
 
+
 	# Server functions
 	def log_message(self, form, *args): # Suppress default logging and only log if right log level set
 	    log(0, "{} request from {} for path {}".format(self.command ,self.client_address[0], self.path))
 
 	def do_GET(self):
 	    self.respond(self.generate_session_id("test")) # Temporary
+
 
 	# Client management functions
 	def generate_session_id(self, username):
@@ -151,14 +167,18 @@ class LanTalkServer(BaseHTTPRequestHandler):
 	    self.wfile.write(message)
 
 
+
 # Main body
 def main():
+	"""The main body of the LanTalk server script."""
+
 	try: # Exit cleanly no matter what
-		"""The main body of the LanTalk server script."""
+
 
 		# Beginning
 		log(1, "LanTalk Server Starting")
 		time.sleep(1) # Wait a bit (it looks better :P)
+
 
 		# Broadcast receiver thread section
 		def bcast_recv_thread():
@@ -168,6 +188,7 @@ def main():
 		def bcast_send_thread():
 		    log(0, "Started sending server broadcasts")
 
+
 		# HTTP server section
 		log(1, "Started listening on [{}:{}]".format(CONF["BindAddr"] if not CONF["BindAddr"] == "" else "*", CONF["BindPort"]))
 		server = HTTPServer((CONF["BindAddr"], int(CONF["BindPort"])), LanTalkServer)
@@ -175,21 +196,32 @@ def main():
 		except KeyboardInterrupt: pass
 		log(1, "Stopped listening for connections")
 		log(1, "LanTalk Server Stopped")
+
+
 		# Clean exit
 		sys.exit(0)
+
+
 	except Exception as err: # On any uncaught error
 		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
+
+		# Exit cleanly but report error (non-zero status code)
 		sys.exit(1)
+
 
 
 # Read the config and start the server if ran as standalone
 if __name__ == "__main__":
+
 	# Config reader section
 	# Read the config file
 	with open(os.path.join(LTS_HOME_DIR, CONF_LOCATION),"r") as conf_file:
 		conf_string = conf_file.read()
+
 	# Put the config string through the config functions. The end result should be a valid config dict
 	CONF = conf_add_missing(conf_validate(conf_parse(conf_string)))
 	log(0, "Config read and parsed successfully")
+
+
 	# Run the main part of the script
 	main()
