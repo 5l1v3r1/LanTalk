@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-
-
 # =============================================== #
 # LanTalk Server
 # License: GPL-3.0
@@ -12,9 +10,10 @@
 # (and outside of it) using HTTP.
 # =============================================== #
 
+#
+# Dependencies
+#
 
-
-# Import dependencies
 import socket
 import json
 import re
@@ -23,16 +22,19 @@ import os
 import time
 import threading
 import random
+import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-
-
+#
 # Constants (Settings which should generally be left untouched)
+#
+
 SOFTWARE_VERSION = (1,0,0) # Server version
 LTS_HOME_DIR = "." # Where to look for all the files
 LOG_LEVEL_NAMES = ["DBUG", "INFO", "WARN", "ERRO"]
 CONF_LOCATION = "lanTalkSrv.conf" # Name of the config file
-ID_SUFFIX_LENGTH = 10 # Length of the suffix
+ID_SUFFIX_LENGTH = 10 # Length of the suffix (numbers after the dot)
+MARK_AS_OFFLINE_DELAY = 7 # How many seconds to wait until marking a user offline (by default, client sends heartbeats every 5 seconds)
 
 VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. Each function takes one argument, the value
 	"LogLevel": lambda val: True if not haserror("int({})".format(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False,
@@ -64,14 +66,15 @@ DEFAULT_CONF_OPTIONS = {
 	"SslCertFile": "",
 }
 
-
-
+#
 # Error classes
+#
+
 class InvalidConfigException(Exception): pass
 
-
-
+#
 # Function definitions
+#
 
 # Helper functions
 def haserror(command):
@@ -87,7 +90,6 @@ def log(level, message):
 	if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore (for example, after an update)
 	if level >= int(CONF["LogLevel"]): # If the LogLevel is lower than the message's, print the message
 	    print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
-
 
 # Config functions
 def conf_parse(conf_string):
@@ -124,36 +126,59 @@ def conf_add_missing(conf_dict):
 	        log(0, "Added setting `{} = {}` (default option)".format(setting, conf_dict[setting]))
 	return conf_dict # Return the conf dict with the added configuration
 
-
-
+#
 # Server class
+#
+
 class LanTalkServer(BaseHTTPRequestHandler):
 	"""The main server class which handles client connections and management"""
+	# TODO: add threaded http server
 
 
 	# Modify BaseHTTPRequestHandler behavior
 	server_version = "LanTalkServer/{}".format(SOFTWARE_VERSION) # The "Server" header
-	sys_version = "" # Remove Python version
+	sys_version = "" # Remove Python version from response (it's unnescessary and possibly a security problem)
 	protocol_version = "HTTP/1.1" # To support persistent connections for speed
 
-	# Define some variables
+	# Initialise class properties
 	signed_in_clients = {} # Dict of all clients with session IDs as keys
 	messages_to_send = [] # List of messages that are yet to be sent
+	threads = [] # A list of threads created by the server
+	run_threads = True # Variable controlling whether threads should be running
 
 
-	# Server functions
+	# On object creation
+	def __init__(self, request, client_addr, server):
+		# Run the initialisation function of the BaseHTTPRequestHandler class (no need for `self` arg - it's passed automatically)
+		super().__init__(request, client_addr, server)
+
+		# Start the threads (get all methods of the object and if their name starts with `thread_`, run them as threads)
+		for thread in [method for method in dir(self) if callable(getattr(self, method)) and method.__name__.startswith("thread_")]:
+			# Add the thread to the list of threads
+			self.threads.append(threading.Thread(target=thread))
+			# Start last thread in the list (the one we just added)
+			self.threads[-1].start()
+
+	# Server methods
 	def log_message(self, form, *args): # Suppress default logging and only log if right log level set
-	    log(0, "{} request from {} for path {}".format(self.command ,self.client_address[0], self.path))
+		# TODO: Fix this unholy creature to respect what's passed to it
+	    log(0, "{} request from {} for path {}".format(self.command, self.client_address[0], self.path))
 
 	def do_GET(self):
 	    self.respond(self.generate_session_id("test")) # Temporary
 
-
-	# Client management functions
+	# Client management methods
 	def generate_session_id(self, username):
 		# Session IDs will consist of the username and a random ID
 		return "{}.{}".format(username, "".join([str(random.randint(1,9)) for x in range(ID_SUFFIX_LENGTH)]))
 
+	# Thread methods
+	def thread_find_disconnects(self):
+		"""A thread which constantly checks for the time of the last heartbeat and removes any users which didn't show signs of life recently."""
+		while run_threads:
+			pass
+
+	# Misc. methods
 	def respond(self, message):
 	    """Send a response to the client with the message"""
 
@@ -166,19 +191,18 @@ class LanTalkServer(BaseHTTPRequestHandler):
 	    message = message.encode("utf-8")
 	    self.wfile.write(message)
 
-
-
+#
 # Main body
+#
+
 def main():
 	"""The main body of the LanTalk server script."""
 
 	try: # Exit cleanly no matter what
 
-
 		# Beginning
 		log(1, "LanTalk Server Starting")
 		time.sleep(1) # Wait a bit (it looks better :P)
-
 
 		# Broadcast receiver thread section
 		def bcast_recv_thread():
@@ -188,7 +212,6 @@ def main():
 		def bcast_send_thread():
 		    log(0, "Started sending server broadcasts")
 
-
 		# HTTP server section
 		log(1, "Started listening on [{}:{}]".format(CONF["BindAddr"] if not CONF["BindAddr"] == "" else "*", CONF["BindPort"]))
 		server = HTTPServer((CONF["BindAddr"], int(CONF["BindPort"])), LanTalkServer)
@@ -197,10 +220,8 @@ def main():
 		log(1, "Stopped listening for connections")
 		log(1, "LanTalk Server Stopped")
 
-
 		# Clean exit
 		sys.exit(0)
-
 
 	except Exception as err: # On any uncaught error
 		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
@@ -208,9 +229,10 @@ def main():
 		# Exit cleanly but report error (non-zero status code)
 		sys.exit(1)
 
-
-
+#
 # Read the config and start the server if ran as standalone
+#
+
 if __name__ == "__main__":
 
 	# Config reader section
@@ -221,7 +243,6 @@ if __name__ == "__main__":
 	# Put the config string through the config functions. The end result should be a valid config dict
 	CONF = conf_add_missing(conf_validate(conf_parse(conf_string)))
 	log(0, "Config read and parsed successfully")
-
 
 	# Run the main part of the script
 	main()
