@@ -23,6 +23,7 @@ import time
 import threading
 import random
 import sys
+from socketserver import ThreadingMixIn
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 #
@@ -127,18 +128,11 @@ def conf_add_missing(conf_dict):
 	return conf_dict # Return the conf dict with the added configuration
 
 #
-# Server class
+# Server classes
 #
 
-class LanTalkServer(BaseHTTPRequestHandler):
+class LanTalkServer(ThreadingMixIn, HTTPServer):
 	"""The main server class which handles client connections and management"""
-	# TODO: add threaded http server
-
-
-	# Modify BaseHTTPRequestHandler behavior
-	server_version = "LanTalkServer/{}".format(SOFTWARE_VERSION) # The "Server" header
-	sys_version = "" # Remove Python version from response (it's unnescessary and possibly a security problem)
-	protocol_version = "HTTP/1.1" # To support persistent connections for speed
 
 	# Initialise class properties
 	signed_in_clients = {} # Dict of all clients with session IDs as keys
@@ -146,37 +140,75 @@ class LanTalkServer(BaseHTTPRequestHandler):
 	threads = [] # A list of threads created by the server
 	run_threads = True # Variable controlling whether threads should be running
 
-
 	# On object creation
-	def __init__(self, request, client_addr, server):
-		# Run the initialisation function of the BaseHTTPRequestHandler class (no need for `self` arg - it's passed automatically)
-		super().__init__(request, client_addr, server)
+	def __init__(self, bind_addr, request_handler):
+		# Run the initialisation function of the HTTPServer class (no need for `self` arg - it's passed automatically)
+		super().__init__(bind_addr, request_handler)
 
+		# Save the request handler as a property (to allow exchanging data)
+		self.request_handler = request_handler
+
+		# Log that threads are being started
+		log(0, "Starting Threads")
 		# Start the threads (get all methods of the object and if their name starts with `thread_`, run them as threads)
-		for thread in [method for method in dir(self) if callable(getattr(self, method)) and method.__name__.startswith("thread_")]:
+		for thread in [getattr(self, method) for method in dir(self) if callable(getattr(self, method)) and method.startswith("thread_")]:
+			print("started a thread")
 			# Add the thread to the list of threads
 			self.threads.append(threading.Thread(target=thread))
 			# Start last thread in the list (the one we just added)
 			self.threads[-1].start()
 
-	# Server methods
-	def log_message(self, form, *args): # Suppress default logging and only log if right log level set
-		# TODO: Fix this unholy creature to respect what's passed to it
-	    log(0, "{} request from {} for path {}".format(self.command, self.client_address[0], self.path))
-
-	def do_GET(self):
-	    self.respond(self.generate_session_id("test")) # Temporary
-
 	# Client management methods
 	def generate_session_id(self, username):
+		"""Generates an ID for user sessions when they are logged in. The IDs follow this pattern: `<username>.<random number>`."""
 		# Session IDs will consist of the username and a random ID
 		return "{}.{}".format(username, "".join([str(random.randint(1,9)) for x in range(ID_SUFFIX_LENGTH)]))
 
 	# Thread methods
-	def thread_find_disconnects(self):
-		"""A thread which constantly checks for the time of the last heartbeat and removes any users which didn't show signs of life recently."""
-		while run_threads:
-			pass
+	def thread_login_manager(self):
+		"""A thread which manages user logins"""
+		while self.run_threads:
+			time.sleep(5)
+			print("thread 1")
+
+	def thread_disconnect_manager(self):
+		"""A thread which constantly checks for the time of the last heartbeat of each user and removes any users which didn't show signs of life recently."""
+		while self.run_threads:
+			#for client in self.signed_in_clients:
+				#pass # TODO: Create the thread
+			time.sleep(6)
+			print("thread 2")
+
+
+	# Misc. methods
+	def stop_threads(self, wait_for_threads=True):
+		"""Stop all threads started by this class and optionally wait for them to exit. Waits by default."""
+		# Log that the threads are being stopped
+		log(0, "Stopping Server Threads")
+		# Tell threads to stop
+		self.run_threads = False
+		# Wait for the threads to exit if told to
+		if wait_for_threads:
+			for thread in self.threads:
+				thread.join()
+
+class LanTalkServerRequestHandler(BaseHTTPRequestHandler):
+	"""The main request handler class which processes requests made to the server"""
+
+	# Modify BaseHTTPRequestHandler behavior
+	server_version = "LanTalkServer/{}".format(SOFTWARE_VERSION) # The "Server" header
+	sys_version = "" # Remove Python version from response (it's unnescessary and possibly a security problem)
+	protocol_version = "HTTP/1.1" # To support persistent connections for speed
+
+	# Server methods
+	def log_message(self, form, *args): # Suppress default logging and only log if right log level set
+		"""Logs important server events according to the global log level."""
+		# TODO: Fix this unholy creature and make it respect what's passed to it ^
+		log(0, "{} request from {} for path {}".format(self.command, self.client_address[0], self.path))
+
+	def do_GET(self):
+		"""Runs when a GET request is received."""
+		self.respond("Nothing here yet!") # Temporary. GET requests will serve the panel at some point in the future (TODO)
 
 	# Misc. methods
 	def respond(self, message):
@@ -204,27 +236,28 @@ def main():
 		log(1, "LanTalk Server Starting")
 		time.sleep(1) # Wait a bit (it looks better :P)
 
-		# Broadcast receiver thread section
-		def bcast_recv_thread():
-		    log(0, "Started listening for client broadcasts")
-
-		# Broadcast sender thread section
-		def bcast_send_thread():
-		    log(0, "Started sending server broadcasts")
-
 		# HTTP server section
 		log(1, "Started listening on [{}:{}]".format(CONF["BindAddr"] if not CONF["BindAddr"] == "" else "*", CONF["BindPort"]))
-		server = HTTPServer((CONF["BindAddr"], int(CONF["BindPort"])), LanTalkServer)
+		server = LanTalkServer((CONF["BindAddr"], int(CONF["BindPort"])), LanTalkServerRequestHandler)
 		try: server.serve_forever()
 		except KeyboardInterrupt: pass
+
 		log(1, "Stopped listening for connections")
+
+		server.stop_threads()
+
 		log(1, "LanTalk Server Stopped")
 
 		# Clean exit
 		sys.exit(0)
 
 	except Exception as err: # On any uncaught error
+		# Log the error first of all
 		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
+
+		# Stop all threads since the script should have gotten far enough to start them but fail silently
+		try: server.stop_threads()
+		except: pass
 
 		# Exit cleanly but report error (non-zero status code)
 		sys.exit(1)
@@ -242,6 +275,9 @@ if __name__ == "__main__":
 
 	# Put the config string through the config functions. The end result should be a valid config dict
 	CONF = conf_add_missing(conf_validate(conf_parse(conf_string)))
+
+	CONF["LogLevel"] = 0 # Debugging override (to be commented out unless in development)
+
 	log(0, "Config read and parsed successfully")
 
 	# Run the main part of the script
