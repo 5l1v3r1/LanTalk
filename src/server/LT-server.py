@@ -127,6 +127,13 @@ def conf_add_missing(conf_dict):
 	        log(0, "Added setting `{} = {}` (default option)".format(setting, conf_dict[setting]))
 	return conf_dict # Return the conf dict with the added configuration
 
+def get_file_contents(file_name):
+	"""Reads a given file cleanly as bytes (to avoid decoding errors) and returns its contents. Raises errors if the file could not be read."""
+	# Treat the filename as a subpath of the home dir
+	file_path = os.path.join(LTS_HOME_DIR, file_name)
+	# Cleanly open the file and return its contents
+	with open(os.path.join(file_path, "rb") as file: return file.read()
+
 #
 # Server classes
 #
@@ -228,13 +235,20 @@ class LanTalkServerRequestHandler(BaseHTTPRequestHandler):
 #
 
 def main():
-	"""The main body of the LanTalk server script."""
+	"""The main body of the LanTalk server script. Starts the server and runs any setup"""
 
 	try: # Exit cleanly no matter what
 
+		# Read the config, then put the config string through the config functions. The end result should be a valid config dict
+		CONF = conf_add_missing(conf_validate(conf_parse(get_file_contents(CONF_LOCATION))))
+
+		CONF["LogLevel"] = 0 # Debugging override (to be commented out unless in development)
+
+		log(0, "Config read and parsed successfully")
+
 		# Beginning
 		log(1, "LanTalk Server Starting")
-		time.sleep(1) # Wait a bit (it looks better :P)
+		time.sleep(0.5) # Wait a bit (it looks better :P)
 
 		# HTTP server section
 		log(1, "Started listening on [{}:{}]".format(CONF["BindAddr"] if not CONF["BindAddr"] == "" else "*", CONF["BindPort"]))
@@ -242,6 +256,7 @@ def main():
 		try: server.serve_forever()
 		except KeyboardInterrupt: pass
 
+		# When the server exits normally (for some reason) or there's a KeyboardInterrupt, do the following
 		log(1, "Stopped listening for connections")
 
 		server.stop_threads()
@@ -251,11 +266,11 @@ def main():
 		# Clean exit
 		sys.exit(0)
 
-	except Exception as err: # On any uncaught error
+	except Exception as err: # If there's any kind of error, log in and exit as cleanly as possible
 		# Log the error first of all
 		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
 
-		# Stop all threads since the script should have gotten far enough to start them but fail silently
+		# Stop all threads since the script should have gotten far enough to start them but fail silently if this causes an error
 		try: server.stop_threads()
 		except: pass
 
@@ -267,18 +282,6 @@ def main():
 #
 
 if __name__ == "__main__":
-
-	# Config reader section
-	# Read the config file
-	with open(os.path.join(LTS_HOME_DIR, CONF_LOCATION),"r") as conf_file:
-		conf_string = conf_file.read()
-
-	# Put the config string through the config functions. The end result should be a valid config dict
-	CONF = conf_add_missing(conf_validate(conf_parse(conf_string)))
-
-	CONF["LogLevel"] = 0 # Debugging override (to be commented out unless in development)
-
-	log(0, "Config read and parsed successfully")
 
 	# Run the main part of the script
 	main()
