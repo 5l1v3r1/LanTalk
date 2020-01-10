@@ -15,14 +15,14 @@ Configurable python3 scripts (server &amp; client) for real-time, encrypted mess
 - [ ] (1) Complete first working version of the server:
   - [x] (1.1) Read and parse configuration
   - [x] (1.2) Start server and listen for connections
-  - [ ] (1.3) Optionally broacast the server on LAN
+  - [ ] (1.3) Optionally broadcast the server on LAN
   - [ ] (1.4) Authenticate users + implement a messaging protocol
   - [ ] (1.5) Support secure, optional, TLS encryption
   - [ ] (1.6) Gracefully handle errors and disconnects
 - [ ] (2) Complete first working version of the client:
   - [ ] (2.1) Working server list interface:
     - [ ] (2.1.1) Receive broadcasts and send own broadcasts
-    - [ ] (2.1.2) List servers which repiled to a broadcast
+    - [ ] (2.1.2) List servers which replied to a broadcast
     - [ ] (2.1.3) Allow adding a custom server
   - [ ] (2.2) Working authentication interface:
     - [ ] (2.2.1) Allow user to enter their credentials if required by server
@@ -46,4 +46,3 @@ Configurable python3 scripts (server &amp; client) for real-time, encrypted mess
   - [ ] (3.4) Allow messaging from the website
 - [ ] (4) Thoroughly test the software
 - [ ] (5) Complete wiki
-
