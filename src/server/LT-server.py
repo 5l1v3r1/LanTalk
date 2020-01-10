@@ -14,7 +14,6 @@
 # Dependencies
 #
 
-import socket
 import json
 import re
 import ipaddress
@@ -31,14 +30,14 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 #
 
 SOFTWARE_VERSION = (1,0,0) # Server version
-LTS_HOME_DIR = "." # Where to look for all the files
 LOG_LEVEL_NAMES = ["DBUG", "INFO", "WARN", "ERRO"]
-CONF_LOCATION = "lanTalkSrv.conf" # Name of the config file
+CONF_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)), "lanTalkSrv.conf") # Name of the config file and location (same dir as script)
 ID_SUFFIX_LENGTH = 10 # Length of the suffix (numbers after the dot)
-MARK_AS_OFFLINE_DELAY = 7 # How many seconds to wait until marking a user offline (by default, client sends heartbeats every 5 seconds)
+MARK_AS_OFFLINE_DELAY = 5 # How many seconds to wait until marking a user offline (by default, client sends heartbeats every 2 seconds)
 
 VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. Each function takes one argument, the value
-	"LogLevel": lambda val: True if not haserror("int({})".format(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False,
+	"HomeDir": lambda val: True if os.path.isdir(val) else False, # If the directory exists
+	"LogLevel": lambda val: True if not haserror("int({})".format(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False, # If is an integer in the correct range
 	"ServerName": lambda val: True if len(val) <= 40 else False, # Length under 40 (for client UI) check
 	"ServerColorScheme": lambda val: True if re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", val) else False, # Regex check if it's a valid hex color code
 	"MaxClients": lambda val: True if val.replace("-","",1).isnumeric() and int(val) >= -1 else False, # Numeric and -1 or higher
@@ -48,11 +47,12 @@ VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. 
 	"ConstantServerBcastInterval": lambda val: True if val.isnumeric() and int(val) > 0 else False, # Is an integer and non-zero
 	"AnswerBcastRequests": lambda val: True if val.lower() in ["yes", "no"] else False, # Check if is "yes" or "no" and ignore caps
 	"RequireAuth": lambda val: True if val.lower() in ["yes", "no"] else False, # Check if is "yes" or "no" and ignore caps
-	"AuthFile": lambda val: True if os.path.isfile(os.path.join(LTS_HOME_DIR, val)) else False, # If the file exists
-	"SslCertFile": lambda val: True if os.path.isfile(os.path.join(LTS_HOME_DIR, val)) else False, # If the file exists
+	"AuthFile": lambda val: True if os.path.isfile(val) else False, # If the file exists
+	"SslCertFile": lambda val: True if os.path.isfile(val) else False, # If the file exists
 }
 
 DEFAULT_CONF_OPTIONS = {
+	"HomeDir": ".",
 	"LogLevel": "1",
 	"ServerName": "A lanTalk Server",
 	"ServerColorScheme": "#333333",
@@ -71,7 +71,7 @@ DEFAULT_CONF_OPTIONS = {
 # Error classes
 #
 
-class InvalidConfigException(Exception): pass
+class InvalidConfigException(Exception): pass # Raised when there are problems processing the config
 
 #
 # Function definitions
@@ -81,8 +81,11 @@ class InvalidConfigException(Exception): pass
 def haserror(command):
 	"""Checks whether running the arument causes an error. Warning: runs whatever is passed to it."""
 	try:
+		# If the arg is a string, exec it
 	    if type(command) == str: exec(command)
+		# If not, it's probably a function so call it
 	    else: command()
+		# If we got here, there was no error so return False
 	    return False
 	except: return True
 
@@ -127,12 +130,14 @@ def conf_add_missing(conf_dict):
 	        log(0, "Added setting `{} = {}` (default option)".format(setting, conf_dict[setting]))
 	return conf_dict # Return the conf dict with the added configuration
 
-def get_file_contents(file_name):
+def get_file_contents(file_name, parent_dir=None):
 	"""Reads a given file cleanly as bytes (to avoid decoding errors) and returns its contents. Raises errors if the file could not be read."""
-	# Treat the filename as a subpath of the home dir
-	file_path = os.path.join(LTS_HOME_DIR, file_name)
+	# If the parent dir is not specified, use the home dir
+	if parent_dir == None: parent_dir = CONF["HomeDir"]
+	# Treat the filename as a subpath of the parent
+	file_path = os.path.join(parent_dir, file_name)
 	# Cleanly open the file and return its contents
-	with open(os.path.join(file_path, "rb") as file: return file.read()
+	with open(file_path, "rb") as file: return file.read()
 
 #
 # Server classes
@@ -159,7 +164,6 @@ class LanTalkServer(ThreadingMixIn, HTTPServer):
 		log(0, "Starting Threads")
 		# Start the threads (get all methods of the object and if their name starts with `thread_`, run them as threads)
 		for thread in [getattr(self, method) for method in dir(self) if callable(getattr(self, method)) and method.startswith("thread_")]:
-			print("started a thread")
 			# Add the thread to the list of threads
 			self.threads.append(threading.Thread(target=thread))
 			# Start last thread in the list (the one we just added)
@@ -175,17 +179,13 @@ class LanTalkServer(ThreadingMixIn, HTTPServer):
 	def thread_login_manager(self):
 		"""A thread which manages user logins"""
 		while self.run_threads:
-			time.sleep(5)
-			print("thread 1")
+			pass # TODO: Create the thread
 
 	def thread_disconnect_manager(self):
 		"""A thread which constantly checks for the time of the last heartbeat of each user and removes any users which didn't show signs of life recently."""
 		while self.run_threads:
-			#for client in self.signed_in_clients:
-				#pass # TODO: Create the thread
-			time.sleep(6)
-			print("thread 2")
-
+			for client in self.signed_in_clients:
+				pass # TODO: Create the thread
 
 	# Misc. methods
 	def stop_threads(self, wait_for_threads=True):
@@ -217,6 +217,10 @@ class LanTalkServerRequestHandler(BaseHTTPRequestHandler):
 		"""Runs when a GET request is received."""
 		self.respond("Nothing here yet!") # Temporary. GET requests will serve the panel at some point in the future (TODO)
 
+	def do_POST(self): # The chat protocol will use POST requests
+		"""Runs when a POST requets is received."""
+		pass # TODO: Implement messaging protocol
+
 	# Misc. methods
 	def respond(self, message):
 	    """Send a response to the client with the message"""
@@ -237,10 +241,13 @@ class LanTalkServerRequestHandler(BaseHTTPRequestHandler):
 def main():
 	"""The main body of the LanTalk server script. Starts the server and runs any setup"""
 
+	# Define CONF as global as all parts of the script use it
+	global CONF
+
 	try: # Exit cleanly no matter what
 
-		# Read the config, then put the config string through the config functions. The end result should be a valid config dict
-		CONF = conf_add_missing(conf_validate(conf_parse(get_file_contents(CONF_LOCATION))))
+		# Read the config in the script's dir, then put the config string through the config functions. The end result should be a valid config dict
+		CONF = conf_add_missing(conf_validate(conf_parse(get_file_contents(CONF_LOCATION, "").decode())))
 
 		CONF["LogLevel"] = 0 # Debugging override (to be commented out unless in development)
 
@@ -259,6 +266,7 @@ def main():
 		# When the server exits normally (for some reason) or there's a KeyboardInterrupt, do the following
 		log(1, "Stopped listening for connections")
 
+		# Stop all threads started by the server
 		server.stop_threads()
 
 		log(1, "LanTalk Server Stopped")
@@ -268,13 +276,13 @@ def main():
 
 	except Exception as err: # If there's any kind of error, log in and exit as cleanly as possible
 		# Log the error first of all
-		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
+		print(e)#log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
 
 		# Stop all threads since the script should have gotten far enough to start them but fail silently if this causes an error
 		try: server.stop_threads()
 		except: pass
 
-		# Exit cleanly but report error (non-zero status code)
+		# Exit cleanly but report error (non-zero exit code)
 		sys.exit(1)
 
 #
@@ -282,6 +290,5 @@ def main():
 #
 
 if __name__ == "__main__":
-
-	# Run the main part of the script
+	# Run the main part of the script if called directly as standalone
 	main()
