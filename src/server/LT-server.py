@@ -91,8 +91,9 @@ def haserror(command):
 
 def log(level, message):
 	"""Logs messages to the console if they have the required log level."""
+	global_log_level = CONF["LogLevel"] if "CONF" in globals() else DEFAULT_CONF_OPTIONS["LogLevel"] # If the log level is not yet read (pre-config logging), assume default
 	if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore (for example, after an update)
-	if level >= int(CONF["LogLevel"]): # If the LogLevel is lower than the message's, print the message
+	if level >= int(global_log_level): # If the LogLevel is lower than the message's, print the message
 	    print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
 
 # Config functions
@@ -106,7 +107,7 @@ def conf_parse(conf_string):
 	    line=line.strip() # Remove any spaces around the line
 	    if line.startswith("#") or line == "": continue # If the line is blank or starts with a hash, ignore it
 	    line = line.split("=", 1) # Split the line at the first = sign
-	    if len(line) != 2: raise InvalidConfigException("File: `{}`, line: `{}/{}`, setting: `{}`. Invalid setting.".format(CONF_LOCATION, current_line, len(lines),line[0])) # If the line is not the right format, throw an error
+	    if len(line) != 2: raise InvalidConfigException("File: `{}`, line: `{} /{}`, setting: `{}`. Invalid setting.".format(CONF_LOCATION, current_line, len(lines),line[0])) # If the line is not the right format, throw an error
 	    config[line[0].strip()] = line[1].strip() # Add setting to config. Extra strip needed in case there are spaces around = sign
 	return config # Return the parsed config as dict
 
@@ -161,13 +162,14 @@ class LanTalkServer(ThreadingMixIn, HTTPServer):
 		self.request_handler = request_handler
 
 		# Log that threads are being started
-		log(0, "Starting Threads")
+		log(0, "Starting threads")
 		# Start the threads (get all methods of the object and if their name starts with `thread_`, run them as threads)
 		for thread in [getattr(self, method) for method in dir(self) if callable(getattr(self, method)) and method.startswith("thread_")]:
 			# Add the thread to the list of threads
 			self.threads.append(threading.Thread(target=thread))
 			# Start last thread in the list (the one we just added)
 			self.threads[-1].start()
+		log(0, "All threads started")
 
 	# Client management methods
 	def generate_session_id(self, username):
@@ -191,7 +193,7 @@ class LanTalkServer(ThreadingMixIn, HTTPServer):
 	def stop_threads(self, wait_for_threads=True):
 		"""Stop all threads started by this class and optionally wait for them to exit. Waits by default."""
 		# Log that the threads are being stopped
-		log(0, "Stopping Server Threads")
+		log(0, "Stopping server threads")
 		# Tell threads to stop
 		self.run_threads = False
 		# Wait for the threads to exit if told to
@@ -254,7 +256,7 @@ def main():
 		log(0, "Config read and parsed successfully")
 
 		# Beginning
-		log(1, "LanTalk Server Starting")
+		log(1, "LanTalk Server starting")
 		time.sleep(0.5) # Wait a bit (it looks better :P)
 
 		# HTTP server section
@@ -269,14 +271,14 @@ def main():
 		# Stop all threads started by the server
 		server.stop_threads()
 
-		log(1, "LanTalk Server Stopped")
+		log(1, "LanTalk Server stopped")
 
 		# Clean exit
 		sys.exit(0)
 
 	except Exception as err: # If there's any kind of error, log in and exit as cleanly as possible
 		# Log the error first of all
-		print(e)#log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
+		log(3, "Fatal error encountered. The server will exit cleanly.\nError: {}".format(err))
 
 		# Stop all threads since the script should have gotten far enough to start them but fail silently if this causes an error
 		try: server.stop_threads()
