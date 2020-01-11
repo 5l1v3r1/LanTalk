@@ -7,7 +7,7 @@
 # Description: Configurable python3 scripts
 # (server & client) for real-time, encrypted
 # messaging on a Local Area Network
-# (and outside of it) using HTTP.
+# (and outside of it) using HTTP(S).
 # =============================================== #
 
 #
@@ -246,6 +246,9 @@ def main():
 	# Define CONF as global as all parts of the script use it
 	global CONF
 
+	# Define server as a global so that the request handler can access it's properties when requests are made
+	global server
+
 	try: # Exit cleanly no matter what
 
 		# Read the config in the script's dir, then put the config string through the config functions. The end result should be a valid config dict
@@ -288,7 +291,7 @@ def main():
 		sys.exit(1)
 
 #
-# Read the config and start the server if ran as standalone
+# Start the server if ran as standalone
 #
 
 if __name__ == "__main__":
