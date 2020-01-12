@@ -60,21 +60,22 @@ class Client():
                 "widgets": { # 2D dict of widgets. Lists contain: [widget_object_creator, placing_method], for example: [lambda: tk.Button(text="Example"), lambda widget: widget.grid(row=1, column=1)]. The lambda is nescessary before the widget object so that a new object is created every time, otherwise there are errors
                 },
             },
-            "SERVER_FINDER": {
+            "SERVER_FIND": {
                 "title": "LanTalk Client - Server Finder",
                 "size": "500x500",
                 "minsize": [400, 400],
                 "maxsize": [1200, 900],
                 "widgets": {
-                    "title_label": [lambda: tk.Label(self.master, text="LanTalk Client", background="#444444"), lambda w: w.grid(row=0, column=0, columnspan=4, sticky=tk.N+tk.S+tk.W+tk.E)],
-                    "server_list_box": [lambda: tk.Frame(self.master, background="#444444", height=self.master.winfo_height()-20, width=self.master.winfo_width()), lambda w: w.grid(row=1, column=0, columnspan=4, sticky=tk.N+tk.S+tk.W+tk.E)]
+                    "title_label": [lambda: tk.Label(self.master, text="LanTalk Client", background="#444444"), lambda w: w.grid(row=0, column=0, rowspan=2, columnspan=4, sticky=tk.N+tk.S+tk.W+tk.E)],
+                    "server_list_box": [lambda: tk.Listbox(self.master, background="#555555"), lambda w: w.grid(row=2, column=0, rowspan=10, columnspan=4, sticky=tk.N+tk.S+tk.W+tk.E)],
+                    "select_server_button": [lambda: tk.Button(self.master), lambda w: w.grid(row=12, column=0, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.W+tk.E)],
                 }
             }
         }
 
         self.master.columnconfigure(1, weight=1) # Automatically resize everything when window size changes
 
-        self.createwindow("SERVER_FINDER") # Open straight to the server finder
+        self.createwindow("SERVER_FIND") # Open straight to the server finder
 
     def createwindow(self, name):
         """Clears all the widgets on the window and replaces them with the widgets of the specified window."""
