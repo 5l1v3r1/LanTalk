@@ -54,7 +54,7 @@ class Client():
 		self.windows = {
 			"DEFAULT": {
 				"title": "LanTalk Client",
-				"size": "500x500",
+				"size": "450x450",
 				"minsize": [400, 400],
 				"maxsize": [1200, 900],
 				"widgets": { # 2D dict of widgets. Lists contain: [widget_object_creator, placing_method], for example: [lambda: tk.Button(text="Example"), lambda widget: widget.grid(row=1, column=1)]. The lambda is nescessary before the widget object so that a new object is created every time, otherwise there are errors
@@ -62,22 +62,17 @@ class Client():
 			},
 			"SERVER_FIND": {
 			"title": "LanTalk Client - Server Finder",
-				"size": "500x500",
+				"size": "450x450",
 				"minsize": [400, 400],
 				"maxsize": [1200, 900],
 				"widgets": {
-					"title_label": [lambda: tk.Label(self.master, text="LanTalk Client", background="#444444"), lambda w: w.grid(row=0, column=0, rowspan=2, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
-					"server_list_box": [lambda: tk.Listbox(self.master, background="#555555"), lambda w: w.grid(row=2, column=0, rowspan=10, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
-					"select_server_button": [lambda: tk.Button(self.master, text="Choose Server"), lambda w: w.grid(row=12, column=0, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
-					"add_server_button": [lambda: tk.Button(self.master, text="Add Server"), lambda w: w.grid(row=12, column=2, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"title_label": [lambda: tk.Label(self.master, text="LanTalk Client", background="#444444"), lambda w: w.grid(row=0, column=0, rowspan=1, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"server_list_box": [lambda: tk.Listbox(self.master, background="#555555"), lambda w: w.grid(row=1, column=0, rowspan=10, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"select_server_button": [lambda: tk.Button(self.master, text="Choose Server"), lambda w: w.grid(row=11, column=0, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"add_server_button": [lambda: tk.Button(self.master, text="Add Server"), lambda w: w.grid(row=11, column=2, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
 				},
 			},
 		}
-
-		self.master.columnconfigure(0,weight=2)# Automatically resize everything when window size changes
-		self.master.columnconfigure(1, weight=2)
-		self.master.columnconfigure(2, weight=2)
-		self.master.columnconfigure(3, weight=2)
 
 		self.createwindow("SERVER_FIND") # Open straight to the server finder
 
@@ -93,6 +88,10 @@ class Client():
 		for widget_name in window["widgets"].keys(): # For every widget name
 			self.current_widgets[widget_name] = window["widgets"][widget_name][0]() # Add the widget to the list of widgets
 			window["widgets"][widget_name][1](self.current_widgets[widget_name]) # Put the grid on the window
+		for column in range(self.master.grid_size()[0]): # Make the widgets resize with the window horizontally
+			self.master.columnconfigure(column, weight=1)
+		for row in range(self.master.grid_size()[1]): # Make the widgets resize with the window vertically
+			self.master.rowconfigure(row, weight=1)
 
 	def resetwindow(self):
 		"""Removes all widgets from the window and resets everything to default."""
