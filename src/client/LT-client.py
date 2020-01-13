@@ -50,6 +50,7 @@ class Client():
 		# Init class properties
 		self.master = tk.Tk() # The main window
 		self.current_widgets = {} # A dict of all the widgets currently displayed with names as keys
+		self.available_servers = [] # A list of servers which the user can connect to
 
 		# Define the different windows and what properties they have
 		self.windows = {
@@ -60,6 +61,9 @@ class Client():
 				"maxsize": [1200, 900],
 				"widgets": { # 2D dict of widgets. Lists contain: [widget_object_creator, placing_method], for example: [lambda: tk.Button(text="Example"), lambda widget: widget.grid(row=1, column=1)]. The lambda is nescessary before the widget object so that a new object is created every time, otherwise there are errors
 				},
+				"post_widget_creation_functions": [
+
+				],
 			},
 			"SERVER_FIND": {
 			"title": "LanTalk Client - Server Finder",
@@ -67,15 +71,22 @@ class Client():
 				"minsize": [400, 400],
 				"maxsize": [1200, 900],
 				"widgets": {
-					"title_label": [lambda: tk.Label(self.master, text="Searching for local servers...\nFound: {}", background="#777777"), lambda w: w.grid(row=0, column=0, rowspan=1, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
-					"server_list_box": [lambda: tk.Listbox(self.master, background="#888888"), lambda w: w.grid(row=1, column=0, rowspan=10, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
-					"select_server_button": [lambda: tk.Button(self.master, text="Choose Server", background="#999999"), lambda w: w.grid(row=11, column=0, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
-					"add_server_button": [lambda: tk.Button(self.master, text="Add Server", background="#999999"), lambda w: w.grid(row=11, column=2, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"title_label": [lambda: tk.Label(self.master, text="Searching for local servers...\nFound: {}", background="#777777"), lambda w: w.grid(row=0, column=0, rowspan=100, columnspan=400, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"server_list_box": [lambda: tk.Listbox(self.master, background="#888888"), lambda w: w.grid(row=100, column=0, rowspan=1000, columnspan=399, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"server_list_box_scrollbar": [lambda: tk.Scrollbar(self.master), lambda w: w.grid(row=100, column=399, rowspan=1000, columnspan=1, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"select_server_button": [lambda: tk.Button(self.master, text="Choose Server", background="#999999"), lambda w: w.grid(row=1100, column=0, rowspan=100, columnspan=200, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"add_server_button": [lambda: tk.Button(self.master, text="Add Server", background="#999999"), lambda w: w.grid(row=1100, column=200, rowspan=100, columnspan=200, sticky=tk.N+tk.S+tk.E+tk.W)],
 				},
+				"post_widget_creation": [
+					lambda: self.current_widgets["server_list_box"].config(yscrollcommand=self.current_widgets["server_list_box_scrollbar"].set),
+					lambda: self.current_widgets["server_list_box_scrollbar"].config(command=self.current_widgets["server_list_box"].yview),
+				]
 			},
 		}
 
 		self.createwindow("SERVER_FIND") # Open straight to the server finder
+
+		for i in range(50): self.current_widgets["server_list_box"].insert(i, str(i))
 
 	# GUI management functions
 	def createwindow(self, name):
@@ -90,6 +101,8 @@ class Client():
 		for widget_name in window["widgets"].keys(): # For every widget name
 			self.current_widgets[widget_name] = window["widgets"][widget_name][0]() # Add the widget to the list of widgets
 			window["widgets"][widget_name][1](self.current_widgets[widget_name]) # Put the grid on the window
+		for command in window["post_widget_creation"]:
+			command()
 		for column in range(self.master.grid_size()[0]): # Make the widgets resize with the window horizontally
 			self.master.columnconfigure(column, weight=1)
 		for row in range(self.master.grid_size()[1]): # Make the widgets resize with the window vertically
