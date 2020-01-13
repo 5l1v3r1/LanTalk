@@ -82,11 +82,11 @@ def haserror(command):
 	"""Checks whether running the arument causes an error. Warning: runs whatever is passed to it."""
 	try:
 		# If the arg is a string, exec it
-	    if type(command) == str: exec(command)
+		if type(command) == str: exec(command)
 		# If not, it's probably a function so call it
-	    else: command()
+		else: command()
 		# If we got here, there was no error so return False
-	    return False
+		return False
 	except: return True
 
 def log(level, message):
@@ -94,7 +94,7 @@ def log(level, message):
 	global_log_level = CONF["LogLevel"] if "CONF" in globals() else DEFAULT_CONF_OPTIONS["LogLevel"] # If the log level is not yet read (pre-config logging), assume default
 	if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore (for example, after an update)
 	if level >= int(global_log_level): # If the LogLevel is lower than the message's, print the message
-	    print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
+		print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
 
 # Config functions
 def conf_parse(conf_string):
@@ -103,32 +103,32 @@ def conf_parse(conf_string):
 	lines = conf_string.split("\n") # Separate lines of the config
 	current_line = 0 # Line counter for error messages
 	for line in lines:
-	    current_line += 1 # Increment line counter
-	    line=line.strip() # Remove any spaces around the line
-	    if line.startswith("#") or line == "": continue # If the line is blank or starts with a hash, ignore it
-	    line = line.split("=", 1) # Split the line at the first = sign
-	    if len(line) != 2: raise InvalidConfigException("File: `{}`, line: `{} /{}`, setting: `{}`. Invalid setting.".format(CONF_LOCATION, current_line, len(lines),line[0])) # If the line is not the right format, throw an error
-	    config[line[0].strip()] = line[1].strip() # Add setting to config. Extra strip needed in case there are spaces around = sign
+		current_line += 1 # Increment line counter
+		line=line.strip() # Remove any spaces around the line
+		if line.startswith("#") or line == "": continue # If the line is blank or starts with a hash, ignore it
+		line = line.split("=", 1) # Split the line at the first = sign
+		if len(line) != 2: raise InvalidConfigException("File: `{}`, line: `{} /{}`, setting: `{}`. Invalid setting.".format(CONF_LOCATION, current_line, len(lines),line[0])) # If the line is not the right format, throw an error
+		config[line[0].strip()] = line[1].strip() # Add setting to config. Extra strip needed in case there are spaces around = sign
 	return config # Return the parsed config as dict
 
 def conf_validate(conf_dict):
 	"""Validates the config for the server making sure every option is valid."""
 	for setting in conf_dict.keys():
-	    # If the setting isn't on the pre-defined list, it's invalid so throw an error
-	    if setting not in VALID_CONF_OPTIONS.keys(): raise InvalidConfigException("File: `{}`. Invalid setting: `{}`.".format(CONF_LOCATION, setting))
-	    # Run the testing function for the setting
-	    if not VALID_CONF_OPTIONS[setting](conf_dict[setting]):
-	        raise InvalidConfigException("Invalid value `{}` for setting `{}` in config file `{}`!".format(conf_dict[setting], setting, CONF_LOCATION))
-	    return conf_dict # Despite being unchanged, return the dict for one-liners
+		# If the setting isn't on the pre-defined list, it's invalid so throw an error
+		if setting not in VALID_CONF_OPTIONS.keys(): raise InvalidConfigException("File: `{}`. Invalid setting: `{}`.".format(CONF_LOCATION, setting))
+		# Run the testing function for the setting
+		if not VALID_CONF_OPTIONS[setting](conf_dict[setting]):
+			raise InvalidConfigException("Invalid value `{}` for setting `{}` in config file `{}`!".format(conf_dict[setting], setting, CONF_LOCATION))
+		return conf_dict # Despite being unchanged, return the dict for one-liners
 
 def conf_add_missing(conf_dict):
 	"""Adds missing settings to the config and gives them default values."""
 	for setting in DEFAULT_CONF_OPTIONS.keys():
-	    # If the setting isn't in the user config
-	    if not setting in conf_dict.keys():
-	        # Add it with the pre-defined default value
-	        conf_dict[setting] = DEFAULT_CONF_OPTIONS[setting]
-	        log(0, "Added setting `{} = {}` (default option)".format(setting, conf_dict[setting]))
+		# If the setting isn't in the user config
+		if not setting in conf_dict.keys():
+			# Add it with the pre-defined default value
+			conf_dict[setting] = DEFAULT_CONF_OPTIONS[setting]
+			log(0, "Added setting `{} = {}` (default option)".format(setting, conf_dict[setting]))
 	return conf_dict # Return the conf dict with the added configuration
 
 def get_file_contents(file_name, parent_dir=None):
@@ -225,16 +225,16 @@ class LanTalkServerRequestHandler(BaseHTTPRequestHandler):
 
 	# Misc. methods
 	def respond(self, message):
-	    """Send a response to the client with the message"""
+		"""Send a response to the client with the message"""
 
-	    # Add headers
-	    self.send_response(200, "LanTalk Accepted Request")
-	    self.send_header("Content-Length", len(message)) # Needed for persistent connections
-	    self.end_headers()
+		# Add headers
+		self.send_response(200, "LanTalk Accepted Request")
+		self.send_header("Content-Length", len(message)) # Needed for persistent connections
+		self.end_headers()
 
-	    # Send the message
-	    message = message.encode("utf-8")
-	    self.wfile.write(message)
+		# Send the message
+		message = message.encode("utf-8")
+		self.wfile.write(message)
 
 #
 # Main body
