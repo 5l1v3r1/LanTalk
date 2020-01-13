@@ -18,6 +18,7 @@ import json
 import threading
 import tkinter as tk
 import http.client
+import socket
 
 #
 # Define constants
@@ -66,7 +67,7 @@ class Client():
 				"minsize": [400, 400],
 				"maxsize": [1200, 900],
 				"widgets": {
-					"title_label": [lambda: tk.Label(self.master, text="LanTalk Client", background="#777777"), lambda w: w.grid(row=0, column=0, rowspan=1, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"title_label": [lambda: tk.Label(self.master, text="Searching for local servers...\nFound: {}", background="#777777"), lambda w: w.grid(row=0, column=0, rowspan=1, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
 					"server_list_box": [lambda: tk.Listbox(self.master, background="#888888"), lambda w: w.grid(row=1, column=0, rowspan=10, columnspan=4, sticky=tk.N+tk.S+tk.E+tk.W)],
 					"select_server_button": [lambda: tk.Button(self.master, text="Choose Server", background="#999999"), lambda w: w.grid(row=11, column=0, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
 					"add_server_button": [lambda: tk.Button(self.master, text="Add Server", background="#999999"), lambda w: w.grid(row=11, column=2, rowspan=1, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)],
@@ -76,6 +77,7 @@ class Client():
 
 		self.createwindow("SERVER_FIND") # Open straight to the server finder
 
+	# GUI management functions
 	def createwindow(self, name):
 		"""Clears all the widgets on the window and replaces them with the widgets of the specified window."""
 
@@ -109,7 +111,6 @@ class Client():
 		"""Runs the mainloop of the main window."""
 
 		self.master.mainloop()
-		print("Exited GUI") # Temporary
 
 #
 # Main body
