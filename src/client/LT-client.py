@@ -90,7 +90,7 @@ class Client():
 				"size": "450x450",
 				"minsize": [400, 400],
 				"maxsize": [1200, 900],
-				"widgets": {
+				"widgets": { # TODO: Add the entry widgets for the server details
 					"indicator_label": [lambda: tk.Label(self.master, text="Add LanTalk Server", background="#777777"), lambda w: w.grid(row=0, column=0, rowspan=100, columnspan=400, sticky=tk.N+tk.S+tk.E+tk.W)],
 					"add_server_button": [lambda: tk.Button(self.master, text="Add", background="#999999"), lambda w: w.grid(row=1100, column=0, rowspan=100, columnspan=200, sticky=tk.N+tk.S+tk.E+tk.W)],
 					"cancel_button": [lambda: tk.Button(self.master, text="Cancel", background="#999999", command=lambda: self.createwindow("SERVER_FIND")), lambda w: w.grid(row=1100, column=200, rowspan=100, columnspan=200, sticky=tk.N+tk.S+tk.E+tk.W)],
@@ -100,6 +100,21 @@ class Client():
 				"threads": [
 				],
 			},
+			"CHAT_SCREEN": {
+				"title": "LanTalk Client - Chat ({})",
+				"size": "600x600",
+				"minsize": [400, 400],
+				"maxsize": [1200, 900],
+				"widgets": { # TODO: Add the chat widgets
+					"indicator_label": [lambda: tk.Label(self.master, text="{}", background="#777777"), lambda w: w.grid(row=0, column=0, rowspan=100, columnspan=400, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"clear_message_button": [lambda: tk.Button(self.master, text="Clear", background="#999999"), lambda w: w.grid(row=1100, column=0, rowspan=100, columnspan=200, sticky=tk.N+tk.S+tk.E+tk.W)],
+					"send_message_button": [lambda: tk.Button(self.master, text="Send", background="#999999"), lambda w: w.grid(row=1100, column=200, rowspan=100, columnspan=200, sticky=tk.N+tk.S+tk.E+tk.W)],
+				},
+				"after_widget_creation": [
+				],
+				"threads": [
+				],
+			}
 		}
 
 		self.createwindow("SERVER_FIND") # Open straight to the server finder
