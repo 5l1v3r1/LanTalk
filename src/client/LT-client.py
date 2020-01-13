@@ -54,18 +54,17 @@ class Client():
 
 		# Define the different windows and what properties they have
 		self.windows = {
-			"DEFAULT": {
+			"DEFAULT": { # Default basic window without any widgets. Only exists so the window can easily be reset between changes
 				"title": "LanTalk Client",
 				"size": "450x450",
 				"minsize": [400, 400],
 				"maxsize": [1200, 900],
 				"widgets": { # 2D dict of widgets. Lists contain: [widget_object_creator, placing_method], for example: [lambda: tk.Button(text="Example"), lambda widget: widget.grid(row=1, column=1)]. The lambda is nescessary before the widget object so that a new object is created every time, otherwise there are errors
 				},
-				"post_widget_creation_functions": [
-
+				"post_widget_creation_functions": [ # List of functions to run after creating the GUI and widgets
 				],
 			},
-			"SERVER_FIND": {
+			"SERVER_FIND": { # Server finder dialog allowing the user to select and connect to a server
 			"title": "LanTalk Client - Server Finder",
 				"size": "450x450",
 				"minsize": [400, 400],
@@ -86,23 +85,25 @@ class Client():
 
 		self.createwindow("SERVER_FIND") # Open straight to the server finder
 
-		for i in range(50): self.current_widgets["server_list_box"].insert(i, str(i))
-
 	# GUI management functions
 	def createwindow(self, name):
 		"""Clears all the widgets on the window and replaces them with the widgets of the specified window."""
 
 		self.resetwindow() # Reset the window first of all
+
 		window = self.windows[name] # Select the given window
+
 		self.master.title(window["title"]) # Set the title
 		self.master.geometry(window["size"]) # Set the size of the window
 		self.master.minsize(window["minsize"][0], window["minsize"][1])
 		self.master.maxsize(window["maxsize"][0], window["maxsize"][1])
+
 		for widget_name in window["widgets"].keys(): # For every widget name
 			self.current_widgets[widget_name] = window["widgets"][widget_name][0]() # Add the widget to the list of widgets
 			window["widgets"][widget_name][1](self.current_widgets[widget_name]) # Put the grid on the window
-		for command in window["post_widget_creation"]:
-			command()
+
+		for function in window["post_widget_creation"]: function() # Run the post widget creation functions
+
 		for column in range(self.master.grid_size()[0]): # Make the widgets resize with the window horizontally
 			self.master.columnconfigure(column, weight=1)
 		for row in range(self.master.grid_size()[1]): # Make the widgets resize with the window vertically
@@ -115,6 +116,7 @@ class Client():
 		self.master.geometry(self.windows["DEFAULT"]["size"]) # Reset size to default
 		self.master.minsize(self.windows["DEFAULT"]["minsize"][0], self.windows["DEFAULT"]["minsize"][1])
 		self.master.maxsize(self.windows["DEFAULT"]["maxsize"][0], self.windows["DEFAULT"]["maxsize"][1])
+
 		for widget_name in self.current_widgets.copy().keys(): # For every currently existing widget
 			try: self.current_widgets[widget_name].destroy() # Try removing the widget but fail silently (it could have been a child of a previously removed widget)
 			except: pass
