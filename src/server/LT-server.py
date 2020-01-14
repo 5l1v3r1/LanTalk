@@ -32,19 +32,27 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 #
 
 
-SOFTWARE_VERSION = (1, 0, 0) # Server version
+# Server version
+SOFTWARE_VERSION = (1, 0, 0)
 LOG_LEVEL_NAMES = ["DBUG", "INFO", "WARN", "ERRO"]
-CONF_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)), "lanTalkSrv.conf") # Name of the config file and location (same dir as script)
-ID_SUFFIX_LENGTH = 10 # Length of the suffix (numbers after the dot)
-MARK_AS_OFFLINE_DELAY = 5 # How many seconds to wait until marking a user offline (by default, client sends heartbeats every 2 seconds)
+# Name of the config file and location (same dir as script)
+CONF_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             "lanTalkSrv.conf")
+# Length of the suffix (numbers after the dot)
+ID_SUFFIX_LENGTH = 10
+# How many seconds to wait until marking a user offline
+# (by default, client sends heartbeats every 2 seconds)
+MARK_AS_OFFLINE_DELAY = 5
 
-VALID_CONF_OPTIONS = { # Dict of config options and functions to validate them. Each function takes one argument, the value
+# Dict of config options and functions to validate them.
+# Each function takes one argument, the value.
+VALID_CONF_OPTIONS = {
     "HomeDir": lambda val: True if os.path.isdir(val) else False, # If the directory exists
-    "LogLevel": lambda val: True if not haserror("int({})".format(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False, # If is an integer in the correct range
+    "LogLevel": lambda val: True if not haserror(lambda: int(val)) and int(val) in range(0, len(LOG_LEVEL_NAMES)) else False, # If is an integer in the correct range
     "ServerName": lambda val: True if len(val) <= 40 else False, # Length under 40 (for client UI) check
     "ServerColorScheme": lambda val: True if re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", val) else False, # Regex check if it's a valid hex color code
     "MaxClients": lambda val: True if val.replace("-","",1).isnumeric() and int(val) >= -1 else False, # Numeric and -1 or higher
-    "BindAddr": lambda val: True if not haserror("ipaddress.ip_address({})".format(val)) or val == "" else False, # Check if valid IP address
+    "BindAddr": lambda val: True if not haserror(lambda: ipaddress.ip_address(val)) or val == "" else False, # Check if valid IP address
     "BindPort": lambda val: True if val.isnumeric() and int(val) >= 1 and int(val) <= 65535 else False, # Check if valid port
     "ConstantServerBcast": lambda val: True if val.lower() in ["yes", "no"] else False, # Check if is "yes" or "no" and ignore caps
     "ConstantServerBcastInterval": lambda val: True if val.isnumeric() and int(val) > 0 else False, # Is an integer and non-zero
@@ -75,7 +83,11 @@ DEFAULT_CONF_OPTIONS = {
 #
 
 
-class InvalidConfigException(Exception): pass # Raised when there are problems processing the config
+# Raised when there are problems processing the config
+class InvalidConfigException(Exception):
+    """Error thrown when an error in the config is detected."""
+
+    pass
 
 #
 # Function definitions
@@ -84,12 +96,18 @@ class InvalidConfigException(Exception): pass # Raised when there are problems p
 
 # Helper functions
 def haserror(command):
-    """Checks whether running the arument causes an error. Warning: runs whatever is passed to it."""
+    """
+    Check whether running the arument causes an error.
+
+    Warning: runs whatever is passed to it.
+    """
     try:
         # If the arg is a string, exec it
-        if type(command) == str: exec(command)
+        if type(command) == str:
+            exec(command)
         # If not, it's probably a function so call it
-        else: command()
+        else:
+            command()
         # If we got here, there was no error so return False
         return False
     except: return True
