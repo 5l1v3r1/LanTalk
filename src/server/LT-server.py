@@ -110,26 +110,45 @@ def haserror(command):
             command()
         # If we got here, there was no error so return False
         return False
-    except: return True
+    except:
+        return True
+
 
 def log(level, message):
-    """Logs messages to the console if they have the required log level."""
-    global_log_level = CONF["LogLevel"] if "CONF" in globals() else DEFAULT_CONF_OPTIONS["LogLevel"] # If the log level is not yet read (pre-config logging), assume default
-    if level > len(LOG_LEVEL_NAMES)-1 or level < 0: return # If the log level is invalid, ignore (for example, after an update)
-    if level >= int(global_log_level): # If the LogLevel is lower than the message's, print the message
+    """Log messages to the console if they have the required log level."""
+    # If the log level is not yet read (pre-config logging), assume default
+    global_log_level = CONF["LogLevel"] if "CONF" in globals() else DEFAULT_CONF_OPTIONS["LogLevel"]
+    if level > len(LOG_LEVEL_NAMES)-1 or level < 0:
+        # If the log level is invalid, ignore (for example, after an update)
+        return
+    # If the LogLevel is lower than the message's, print the message
+    if level >= int(global_log_level):
         print("[ {} ] < {} > | {}".format(LOG_LEVEL_NAMES[level], time.strftime("%d/%m/%Y %H:%M:%S"), message))
+
 
 # Config functions
 def conf_parse(conf_string):
-    """Parses a config string in the form: `setting = value`, one setting per line, lines starting with # are ignored."""
-    config = {} # Define empty config
-    lines = conf_string.split("\n") # Separate lines of the config
-    current_line = 0 # Line counter for error messages
+    """
+    Parse a config string in the form: `setting = value`, one setting per line.
+
+    Lines starting with # are ignored.
+    """
+    # Define empty config
+    config = {}
+    # Separate lines of the config
+    lines = conf_string.split("\n")
+    # Line counter for error messages
+    current_line = 0
     for line in lines:
-        current_line += 1 # Increment line counter
-        line=line.strip() # Remove any spaces around the line
-        if line.startswith("#") or line == "": continue # If the line is blank or starts with a hash, ignore it
-        line = line.split("=", 1) # Split the line at the first = sign
+        # Increment line counter
+        current_line += 1
+        # Remove any spaces around the line
+        line = line.strip()
+        if line.startswith("#") or line == "":
+            # If the line is blank or starts with a hash, ignore it
+            continue
+        # Split the line at the first = sign
+        line = line.split("=", 1)
         if len(line) != 2: raise InvalidConfigException("File: `{}`, line: `{} /{}`, setting: `{}`. Invalid setting.".format(CONF_LOCATION, current_line, len(lines),line[0])) # If the line is not the right format, throw an error
         config[line[0].strip()] = line[1].strip() # Add setting to config. Extra strip needed in case there are spaces around = sign
     return config # Return the parsed config as dict
